@@ -270,7 +270,8 @@ local MainBOX = GeneralTab:AddLeftTabbox("Main") do
         "Raycast","FindPartOnRay",
         "FindPartOnRayWithWhitelist",
         "FindPartOnRayWithIgnoreList",
-        "Mouse.Hit/Target"
+        "Mouse.Hit/Target",
+        "Viewport"
     }}):OnChanged(function() 
         SilentAimSettings.SilentAimMethod = Options.Method.Value 
     end)
@@ -451,19 +452,41 @@ end))
 
 local oldIndex = nil 
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, Index)
-    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value and Options.Method.Value == "Mouse.Hit/Target" and getClosestPlayer() then
+    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value and getClosestPlayer() then
         local HitPart = getClosestPlayer()
+
+        if Options.Method.Value == "Viewport" then
+            local HitPartPosition, OnScreen = WorldToViewportPoint(Camera, HitPart.Position)
+            if not OnScreen then
+                return oldIndex(self, Index)
+            end
+
+            if Index == "X" or Index == "x" then
+                return HitPartPosition.X
+            elseif Index == "Y" or Index == "y" then
+                return HitPartPosition.Y
+            elseif Index == "UnitRay" then
+                return Camera:ViewportPointToRay(HitPartPosition.X, HitPartPosition.Y)
+            elseif Index == "Hit" or Index == "hit" then
+                return HitPart.CFrame
+            elseif Index == "Target" or Index == "target" then
+                return HitPart
+            end
+        end
+
+        if Options.Method.Value == "Mouse.Hit/Target" then
          
-        if Index == "Target" or Index == "target" then 
-            return HitPart
-        elseif Index == "Hit" or Index == "hit" then 
-            return ((Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or (not Toggles.Prediction.Value and HitPart.CFrame))
-        elseif Index == "X" or Index == "x" then 
-            return self.X 
-        elseif Index == "Y" or Index == "y" then 
-            return self.Y 
-        elseif Index == "UnitRay" then 
-            return Ray.new(self.Origin, (self.Hit - self.Origin).Unit)
+            if Index == "Target" or Index == "target" then 
+                return HitPart
+            elseif Index == "Hit" or Index == "hit" then 
+                return ((Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or (not Toggles.Prediction.Value and HitPart.CFrame))
+            elseif Index == "X" or Index == "x" then 
+                return self.X 
+            elseif Index == "Y" or Index == "y" then 
+                return self.Y 
+            elseif Index == "UnitRay" then 
+                return Ray.new(self.Origin, (self.Hit - self.Origin).Unit)
+            end
         end
     end
 
