@@ -272,8 +272,7 @@ local MainBOX = GeneralTab:AddLeftTabbox("Main") do
         "FindPartOnRayWithWhitelist",
         "FindPartOnRayWithIgnoreList",
         "Mouse.Hit/Target",
-        "Viewport",
-        "Viewport (Arsenal)"
+        "Viewport"
     }}):OnChanged(function() 
         SilentAimSettings.SilentAimMethod = Options.Method.Value 
     end)
@@ -461,39 +460,30 @@ end))
 
 local oldIndex = nil 
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, Index)
-    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value then
+    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value and getClosestPlayer() then
         local HitPart = getClosestPlayer()
-        if not HitPart then
-            return oldIndex(self, Index)
-        end
 
-        local IsViewportMethod = Options.Method.Value == "Viewport" or Options.Method.Value == "Viewport (Arsenal)"
-        if IsViewportMethod then
+        if Options.Method.Value == "Viewport" then
             local HitPartPosition, OnScreen = WorldToViewportPoint(Camera, HitPart.Position)
             if not OnScreen then
                 return oldIndex(self, Index)
             end
 
-            local Inset = GuiInset(GuiService)
-            local UseInset = Options.Method.Value == "Viewport (Arsenal)" or Toggles.ViewportUseGuiInset.Value
-            local ViewportX = HitPartPosition.X + (UseInset and Inset.X or 0)
-            local ViewportY = HitPartPosition.Y + (UseInset and Inset.Y or 0)
-            local PredictedHit = (Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or HitPart.CFrame
-
             if Index == "X" or Index == "x" then
-                return ViewportX
+                return HitPartPosition.X
             elseif Index == "Y" or Index == "y" then
-                return ViewportY
+                return HitPartPosition.Y
             elseif Index == "UnitRay" then
                 return Camera:ViewportPointToRay(HitPartPosition.X, HitPartPosition.Y)
             elseif Index == "Hit" or Index == "hit" then
-                return PredictedHit
+                return HitPart.CFrame
             elseif Index == "Target" or Index == "target" then
                 return HitPart
             end
         end
 
         if Options.Method.Value == "Mouse.Hit/Target" then
+         
             if Index == "Target" or Index == "target" then 
                 return HitPart
             elseif Index == "Hit" or Index == "hit" then 
