@@ -24,6 +24,7 @@ local SilentAimSettings = {
     
     MouseHitPrediction = false,
     MouseHitPredictionAmount = 0.165,
+    ViewportUseGuiInset = true,
     HitChance = 100
 }
 
@@ -306,12 +307,18 @@ local FieldOfViewBOX = GeneralTab:AddLeftTabbox("Field Of View") do
         SilentAimSettings.ShowSilentAimTarget = Toggles.MousePosition.Value 
     end)
     local PredictionTab = MiscellaneousBOX:AddTab("Prediction")
-    PredictionTab:AddToggle("Prediction", {Text = "Mouse.Hit/Target Prediction"}):OnChanged(function()
+    PredictionTab:AddToggle("Prediction", {Text = "Mouse/Viewport Hit Prediction"}):OnChanged(function()
         SilentAimSettings.MouseHitPrediction = Toggles.Prediction.Value
     end)
     PredictionTab:AddSlider("Amount", {Text = "Prediction Amount", Min = 0.165, Max = 1, Default = 0.165, Rounding = 3}):OnChanged(function()
         PredictionAmount = Options.Amount.Value
         SilentAimSettings.MouseHitPredictionAmount = Options.Amount.Value
+    end)
+
+    local MethodTab = MiscellaneousBOX:AddTab("Method Tweaks")
+    MethodTab:AddLabel("Viewport (Arsenal) offsets X/Y by GUI inset.")
+    MethodTab:AddToggle("ViewportUseGuiInset", {Text = "Viewport uses GUI inset", Default = SilentAimSettings.ViewportUseGuiInset}):OnChanged(function()
+        SilentAimSettings.ViewportUseGuiInset = Toggles.ViewportUseGuiInset.Value
     end)
 end
 
@@ -358,6 +365,7 @@ local LoadConfigurationBOX = GeneralTab:AddRightTabbox("Load Configuration") do
             Toggles.MousePosition:SetValue(SilentAimSettings.ShowSilentAimTarget)
             Toggles.Prediction:SetValue(SilentAimSettings.MouseHitPrediction)
             Options.Amount:SetValue(SilentAimSettings.MouseHitPredictionAmount)
+            Toggles.ViewportUseGuiInset:SetValue(SilentAimSettings.ViewportUseGuiInset)
             Options.HitChance:SetValue(SilentAimSettings.HitChance)
         end
     end)
