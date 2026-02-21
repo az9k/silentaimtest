@@ -24,6 +24,7 @@ local SilentAimSettings = {
     
     MouseHitPrediction = false,
     MouseHitPredictionAmount = 0.165,
+    ViewportUseGuiInset = true,
     HitChance = 100
 }
 
@@ -270,7 +271,9 @@ local MainBOX = GeneralTab:AddLeftTabbox("Main") do
         "Raycast","FindPartOnRay",
         "FindPartOnRayWithWhitelist",
         "FindPartOnRayWithIgnoreList",
-        "Mouse.Hit/Target"
+        "Mouse.Hit/Target",
+        "Viewport",
+        "Viewport (Arsenal)"
     }}):OnChanged(function() 
         SilentAimSettings.SilentAimMethod = Options.Method.Value 
     end)
@@ -305,12 +308,18 @@ local FieldOfViewBOX = GeneralTab:AddLeftTabbox("Field Of View") do
         SilentAimSettings.ShowSilentAimTarget = Toggles.MousePosition.Value 
     end)
     local PredictionTab = MiscellaneousBOX:AddTab("Prediction")
-    PredictionTab:AddToggle("Prediction", {Text = "Mouse.Hit/Target Prediction"}):OnChanged(function()
+    PredictionTab:AddToggle("Prediction", {Text = "Mouse/Viewport Hit Prediction"}):OnChanged(function()
         SilentAimSettings.MouseHitPrediction = Toggles.Prediction.Value
     end)
     PredictionTab:AddSlider("Amount", {Text = "Prediction Amount", Min = 0.165, Max = 1, Default = 0.165, Rounding = 3}):OnChanged(function()
         PredictionAmount = Options.Amount.Value
         SilentAimSettings.MouseHitPredictionAmount = Options.Amount.Value
+    end)
+
+    local MethodTab = MiscellaneousBOX:AddTab("Method Tweaks")
+    MethodTab:AddLabel("Viewport (Arsenal) offsets X/Y by GUI inset.")
+    MethodTab:AddToggle("ViewportUseGuiInset", {Text = "Viewport uses GUI inset", Default = SilentAimSettings.ViewportUseGuiInset}):OnChanged(function()
+        SilentAimSettings.ViewportUseGuiInset = Toggles.ViewportUseGuiInset.Value
     end)
 end
 
@@ -357,6 +366,7 @@ local LoadConfigurationBOX = GeneralTab:AddRightTabbox("Load Configuration") do
             Toggles.MousePosition:SetValue(SilentAimSettings.ShowSilentAimTarget)
             Toggles.Prediction:SetValue(SilentAimSettings.MouseHitPrediction)
             Options.Amount:SetValue(SilentAimSettings.MouseHitPredictionAmount)
+            Toggles.ViewportUseGuiInset:SetValue(SilentAimSettings.ViewportUseGuiInset)
             Options.HitChance:SetValue(SilentAimSettings.HitChance)
         end
     end)
@@ -451,19 +461,50 @@ end))
 
 local oldIndex = nil 
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, Index)
-    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value and Options.Method.Value == "Mouse.Hit/Target" and getClosestPlayer() then
+    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value then
         local HitPart = getClosestPlayer()
-         
-        if Index == "Target" or Index == "target" then 
-            return HitPart
-        elseif Index == "Hit" or Index == "hit" then 
-            return ((Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or (not Toggles.Prediction.Value and HitPart.CFrame))
-        elseif Index == "X" or Index == "x" then 
-            return self.X 
-        elseif Index == "Y" or Index == "y" then 
-            return self.Y 
-        elseif Index == "UnitRay" then 
-            return Ray.new(self.Origin, (self.Hit - self.Origin).Unit)
+        if not HitPart then
+            return oldIndex(self, Index)
+        end
+
+        local IsViewportMethod = Options.Method.Value == "Viewport" or Options.Method.Value == "Viewport (Arsenal)"
+        if IsViewportMethod then
+            local HitPartPosition, OnScreen = WorldToViewportPoint(Camera, HitPart.Position)
+            if not OnScreen then
+                return oldIndex(self, Index)
+            end
+
+            local Inset = GuiInset(GuiService)
+            local UseInset = Options.Method.Value == "Viewport (Arsenal)" or Toggles.ViewportUseGuiInset.Value
+            local ViewportX = HitPartPosition.X + (UseInset and Inset.X or 0)
+            local ViewportY = HitPartPosition.Y + (UseInset and Inset.Y or 0)
+            local PredictedHit = (Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or HitPart.CFrame
+
+            if Index == "X" or Index == "x" then
+                return ViewportX
+            elseif Index == "Y" or Index == "y" then
+                return ViewportY
+            elseif Index == "UnitRay" then
+                return Camera:ViewportPointToRay(HitPartPosition.X, HitPartPosition.Y)
+            elseif Index == "Hit" or Index == "hit" then
+                return PredictedHit
+            elseif Index == "Target" or Index == "target" then
+                return HitPart
+            end
+        end
+
+        if Options.Method.Value == "Mouse.Hit/Target" then
+            if Index == "Target" or Index == "target" then 
+                return HitPart
+            elseif Index == "Hit" or Index == "hit" then 
+                return ((Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or (not Toggles.Prediction.Value and HitPart.CFrame))
+            elseif Index == "X" or Index == "x" then 
+                return self.X 
+            elseif Index == "Y" or Index == "y" then 
+                return self.Y 
+            elseif Index == "UnitRay" then 
+                return Ray.new(self.Origin, (self.Hit - self.Origin).Unit)
+            end
         end
     end
 
